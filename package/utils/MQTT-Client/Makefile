@@ -37,6 +37,7 @@ define Package/MQTT-Client/install
 	$(INSTALL_DIR) $(1)/usr/bin/ 
 	$(INSTALL_DIR) $(1)/etc/IoT
 	$(INSTALL_DIR) $(1)/etc/init.d/
+	$(INSTALL_BIN) ./files/mqtt.init $(1)/etc/init.d/mqtt
 	$(INSTALL_DIR) $(1)/usr/bin/backup
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/MQTT-Client $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/MQTT-Client $(1)/usr/bin/backup/
