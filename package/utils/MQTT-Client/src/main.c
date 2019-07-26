@@ -23,16 +23,24 @@
 #include "Login.h"
 #include "PubSub.h"
 #include "AES.h"
-#define SIZE 1024
-#define CLIENTID    "APP_Client1"
+#include "device_order.h"
+#include "DaemonLog.h"
+#include "DeviceList.h"
+#include "UbusTransform.h"
+#include "IotFifo.h"
+#include "device-sql.h"
+#define CLIENTID    "GW"
 
-#define prikey "prikey.pem"
-#define Head "https://127.0.0.1:8888/cloud/Register?mac=00:0c:29:db:07:3f&version=1&versionName=123&sign="
-#define PAYLOAD "where am I from?who am I?where am I going?"
-			
-char *const topic[]={"gw/device/#"};				 
-DATA *data = NULL;
-int count =0;
+char *const topic[]={"gw/device/#"};
+enum daemon_log_flags daemon_log_use = DAEMON_LOG_SYSLOG;
+const char* daemon_log_ident;
+/**********************************
+*	1.control
+*	2.delete
+*	3.set_auto
+*	4.set_scene
+*	5.multicontrol 
+**********************************/				 
 
 typedef struct {
 	int port;
@@ -40,27 +48,38 @@ typedef struct {
 	char *filename;
 	int type;
 }Address;
+
 int msgarrvd(void *context, char *topicName, int topicLen, MQTTAsync_message *message)
 {
 
-    	char* payloadptr;
-	char decrypt_result[2*SIZE+1]={0};
+    	char payloadptr[1024] = {0};
 	MQTTAsync client = (MQTTAsync)context;
 	
-	char iv[16];
-	memset(iv,1,sizeof(iv));
-    	printf("Message arrived\n");
-    	printf("     topic: %s\n", topicName);
-    	printf("   message: ");
-
-	/************************此处注意！！！***************************
-	 *strlen(message->payload)不等于message->payloadlen **************
-	 *原因是：云端传过来的数据后面添加了尾巴，导致比真实数据要长一些 */
-    	payloadptr = message->payload;
-	//aes_decrypt_cbc(payloadptr,message->payloadlen,"12345678",iv,decrypt_result,sizeof(decrypt_result));
-	//printf("dec:%lu,%s\n",strlen(decrypt_result),decrypt_result);
-	printf("recv:%s\n",payloadptr);
-	Publish_Message(client,topicName,message->payload,message->payloadlen);
+	memcpy(payloadptr, message->payload,message->payloadlen);
+	DBG_vPrintf(DBG_MQTTC, "topic_name:%s,message:%s\n",topicName,payloadptr);
+	int msgId = get_msgId(payloadptr);
+	switch(msgId)
+	{
+		case DEV_CONTROL:
+			Device_Control(payloadptr);
+			break;
+		case DEV_DELETE:
+			Device_Delete(payloadptr);
+			break;
+		case DEV_SET_AUTO:
+			DBG_vPrintf(DBG_MQTTC, "set device auto mode\n");
+			break;
+		case DEV_SET_SCENE:
+			DBG_vPrintf(DBG_MQTTC, "set device scene mode\n");
+			break;
+		case DEV_MULTICONTROL:
+			DBG_vPrintf(DBG_MQTTC, "set device multicontrol mode\n");
+			break;
+		default:
+			DBG_vPrintf(DBG_MQTTC, "msgId is unkonw:%d\n",msgId);
+			break;
+	}	
+	//Publish_Message(client,topicName,message->payload,message->payloadlen);
     	MQTTAsync_freeMessage(&message);
     	MQTTAsync_free(topicName);
    	return 1;
@@ -90,27 +109,25 @@ void get_option(Address *addr,int argc, char **argv)
                 switch (c)
                 {
                         case 'i':
-                                printf("Input arg IP \n");
 				addr->ip = optarg;	
                                 break;
  
                         case 'p':
-                                printf("option p with value '%s'\n", optarg);
 				addr->port = atoi(optarg);
                                 break;
  
                         case 'f':
-                                printf("option f with value '%s'\n", optarg);
                                 break;
  
                         case 't':
-                                printf("option t with value '%s'\n", optarg);
                                 //g_cfg.type = optarg;
                                 break;
  
                         case 'h':
+				fprintf(stderr, "-i mqtt server ip\n \
+						      -p mqtt server port\n\
+						      -f filename\n");
                         default:
-                                printf("this is default!\n");
                                 break;
                 }
         }
@@ -120,24 +137,50 @@ void get_option(Address *addr,int argc, char **argv)
 
 int main(int argc, char* argv[])
 {
-	MQTTAsync client;
-	uchar buf[2048]={0};
 	Address addr = {1883,"127.0.0.1","./",123};
+	daemon_log_ident = daemon_ident_from_argv0(argv[0]);
+
 	get_option(&addr,argc,argv);
-	int ret = Connect(&client,addr.ip,CLIENTID,"username","password",msgarrvd);
+
+	SQL_Init();
+	DeviceList_Init();
+	DBG_vPrintf(DBG_MQTTC, "*************************start mqtt client**********************\n");
+	int ret = Connect(addr.ip,CLIENTID,"username","password",msgarrvd);
 	if(ret == -1)
 	{
-		printf("连接MQTT服务器失败\n");
+		DBG_vPrintf(DBG_MQTTC, "*****************连接MQTT服务器失败*******************\n");
 		return -1;
 	}
-	ret = Subscribe_topic(client,topic,1);
+	DBG_vPrintf(DBG_MQTTC, "*****************Success cnnect to MQTT Server*******************\n");
+	ret = Subscribe_topic(topic,1);
 	if(ret)
 	{
-		printf("订阅主题失败\n");
+		DBG_vPrintf(DBG_MQTTC,"************************订阅主题失败********************\n");
 		return -1;
 	}
-	
-	while(1){};
-	disConnect(client,topic,1);
+	Ubus_thread_main();	
+	int fd = init_report_fifo();
+	while(1){
+		IotFormat data ={0};
+		ret = read_fifo(fd,&data);
+		if(ret > 0){
+			switch(data.msgId)
+			{
+				case DEV_REPORT:
+					Device_Report(data);
+					break;
+				case DEV_LEAVE:
+					Device_Leave(data);
+					break;
+				case DEV_JOIN:
+					Device_Join(data);
+					break;
+				default:
+					DBG_vPrintf(DBG_MQTTC,"the msgId is unknow:%d\n",data.msgId);
+					break;
+			}
+		}	
+	};
+	disConnect(topic,1);
 	return 0;
 }

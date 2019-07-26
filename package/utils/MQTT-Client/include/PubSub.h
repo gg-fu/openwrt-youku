@@ -10,10 +10,10 @@
 #define ADDRESS_LEN 24
 
 void connlost(void *context, char *cause);
-void disConnect(MQTTAsync client,char * const *topics,int num);
-int Subscribe_topic(MQTTAsync client,char * const *topics,int num);
-int Publish_Message(MQTTAsync client,const char *TOPIC,char buf[],int size);
-int Connect(MQTTAsync *client,const char *MQTTAddress,const char *CLIENTID,
+void disConnect(char * const *topics,int num);
+int Subscribe_topic(char * const *topics,int num);
+int Publish_Message(const char *TOPIC,char buf[],int size);
+int Connect(const char *MQTTAddress,const char *CLIENTID,
 const char *username,const char *password,MQTTAsync_messageArrived* ma);
 
 
