@@ -1,0 +1,21 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2010 OpenWrt.org
+# Copyright (C) 2006 Carlos Sobrinho
+
+START=29
+STOP=50
+
+start()                                                                                                                  
+{
+        /usr/bin/COAP &
+}
+
+stop()
+{
+        for pid in `gprep COAP`;do kill -9 $pid;done
+}
+service_triggers()                                                                                                               
+{
+        /etc/init.d/COAP reload
+}
+
