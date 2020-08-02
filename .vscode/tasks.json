@@ -1,0 +1,55 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "make",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "package/utils/IotHub/compile",
+                "V=s",
+                "CONFIG_DEBUG=y"
+            ],
+            "options": {
+                "cwd": "${workspaceRoot}/../../../"
+            },
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "copy",
+            "type": "shell",
+            "command": "scp",
+            "args": [
+                "-P 22",
+                "build_dir/target-aarch64_generic_musl/IotHub/IotHub",
+                "root@192.168.1.168:/usr/bin"
+            ],
+            "options": {
+                "cwd": "${workspaceRoot}/../../../"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "run",
+            "type": "shell",
+            "command": "date",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceRoot}/../../../"
+            },
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "make",
+                "copy"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
