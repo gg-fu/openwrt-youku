@@ -53,7 +53,7 @@ void connlost(void *context, char *cause)
 	MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
 	DBG_vPrintf(DBG_MQTTC,"connecting lost\n");
 
-	conn_opts.keepAliveInterval = 20;
+	conn_opts.keepAliveInterval = 60;
 	conn_opts.cleansession = 1;
 	conn_opts.username = Rusername;
 	conn_opts.password = Rpassword;

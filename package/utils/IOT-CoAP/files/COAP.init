@@ -1,21 +1,29 @@
 #!/bin/sh /etc/rc.common
-# Copyright (C) 2006-2010 OpenWrt.org
-# Copyright (C) 2006 Carlos Sobrinho
+# Copyright (C) 2008 OpenWrt.org
 
-START=29
-STOP=50
+START=98
+#..................................................................
 
-start()                                                                                                                  
-{
-        /usr/bin/COAP &
+USE_PROCD=1
+#......procd......
+
+BIN_PATH="/usr/bin/COAP"
+
+start_service() {
+    procd_open_instance
+    procd_set_param respawn
+    procd_set_param command "$BIN_PATH"
+
+    procd_close_instance
 }
 
-stop()
-{
-        for pid in `gprep COAP`;do kill -9 $pid;done
+stop_service() {
+    rm -f /var/run/COAP.pid
 }
-service_triggers()                                                                                                               
-{
-        /etc/init.d/COAP reload
+
+restart() {
+    stop
+    start
 }
+
 

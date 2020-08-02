@@ -29,8 +29,8 @@
 #include "UbusTransform.h"
 #include "IotFifo.h"
 #include "device-sql.h"
-#define CLIENTID    "GW"
 
+#define CLIENTID    "GW"
 char *const topic[]={"gw/device/#"};
 enum daemon_log_flags daemon_log_use = DAEMON_LOG_SYSLOG;
 const char* daemon_log_ident;

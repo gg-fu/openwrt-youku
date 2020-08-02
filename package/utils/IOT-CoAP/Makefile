@@ -29,7 +29,7 @@ define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) -rf ./src/ $(PKG_BUILD_DIR)/
 	$(CP) -rf ./include/ $(PKG_BUILD_DIR)/
-	$(CP) -rf ./lib/ $(PKG_BUILD_DIR)/
+	#$(CP) -rf ./lib/ $(PKG_BUILD_DIR)/
 	$(CP) ./CMakeLists.txt $(PKG_BUILD_DIR)/
 endef
 define Package/COAP/install
